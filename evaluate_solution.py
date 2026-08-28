@@ -24,6 +24,24 @@ def score_debug_output(agent_output: str, expected_bug: str) -> bool:
     return match_score >= 3
 
 
+def measure_reasoning_depth(output: str) -> int:
+    """Count how many reasoning steps the output shows"""
+    phrases = [
+        "constraint",
+        "pattern",
+        "because",
+        "however",
+        "loop",
+        "index",
+        "increment",
+        "verify",
+        "bug",
+        "why",
+        "fix"
+    ]
+    return sum(1 for phrase in phrases if phrase in output.lower())
+
+
 def evaluate_both():
     """Run baseline AND solution on all test cases"""
 
@@ -62,19 +80,23 @@ def evaluate_both():
         try:
             baseline_output = debug_code_baseline(code, problem, test_failure)
             baseline_correct = score_debug_output(baseline_output, expected_bug)
+            baseline_reasoning = measure_reasoning_depth(baseline_output)
+
             results["baseline"]["cases"].append({
                 "id": problem_id,
                 "correct": baseline_correct,
+                "reasoning_depth": baseline_reasoning,
                 "output": baseline_output[:200]
             })
             if baseline_correct:
                 results["baseline"]["correct"] += 1
-            print(f"  Baseline: {'✅' if baseline_correct else '❌'}")
+            print(f"  Baseline: {'✅' if baseline_correct else '❌'} (reasoning: {baseline_reasoning}/11)")
         except Exception as e:
             print(f"  Baseline: ❌ ERROR")
             results["baseline"]["cases"].append({
                 "id": problem_id,
                 "correct": False,
+                "reasoning_depth": 0,
                 "error": str(e)[:100]
             })
 
@@ -84,19 +106,23 @@ def evaluate_both():
             solution_result = debug_code_solution(code, problem, test_failure)
             solution_output = solution_result["bug_analysis"]
             solution_correct = score_debug_output(solution_output, expected_bug)
+            solution_reasoning = measure_reasoning_depth(solution_output)
+
             results["solution"]["cases"].append({
                 "id": problem_id,
                 "correct": solution_correct,
+                "reasoning_depth": solution_reasoning,
                 "output": solution_output[:200]
             })
             if solution_correct:
                 results["solution"]["correct"] += 1
-            print(f"  Solution: {'✅' if solution_correct else '❌'}")
+            print(f"  Solution: {'✅' if solution_correct else '❌'} (reasoning: {solution_reasoning}/11)")
         except Exception as e:
             print(f"  Solution: ❌ ERROR")
             results["solution"]["cases"].append({
                 "id": problem_id,
                 "correct": False,
+                "reasoning_depth": 0,
                 "error": str(e)[:100]
             })
 
@@ -116,10 +142,21 @@ def evaluate_both():
     improvement = solution_pct - baseline_pct
     improvement_multiplier = (solution_pct / baseline_pct) if baseline_pct > 0 else 0
 
-    print(f"\nBaseline:  {baseline_correct}/{baseline_total} ({baseline_pct:.1f}%)")
+    baseline_avg_reasoning = sum(c.get("reasoning_depth", 0) for c in results["baseline"]["cases"]) / len(
+        results["baseline"]["cases"])
+    solution_avg_reasoning = sum(c.get("reasoning_depth", 0) for c in results["solution"]["cases"]) / len(
+        results["solution"]["cases"])
+
+    print(f"\nAccuracy:")
+    print(f"Baseline:  {baseline_correct}/{baseline_total} ({baseline_pct:.1f}%)")
     print(f"Solution:  {solution_correct}/{solution_total} ({solution_pct:.1f}%)")
     print(f"\n📈 Improvement: +{improvement:.1f} percentage points")
     print(f"📈 Multiplier: {improvement_multiplier:.2f}x")
+
+    print(f"\nReasoning Depth:")
+    print(f"Baseline:  {baseline_avg_reasoning:.1f}/11")
+    print(f"Solution:  {solution_avg_reasoning:.1f}/11")
+    print(f"📈 Reasoning improvement: +{solution_avg_reasoning - baseline_avg_reasoning:.1f} steps")
 
     # Save results
     with open('comparison_results.json', 'w') as f:
