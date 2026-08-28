@@ -2,81 +2,81 @@
   {
     "id": 1,
     "problem": "Two Sum - Find two numbers in array that sum to target",
-    "code": "def twoSum(nums, target):\n    for i in range(len(nums)):\n        for j in range(i, len(nums)):  # BUG: should be i+1\n            if nums[i] + nums[j] == target:\n                return [i, j]\n    return []",
-    "test_failure": "Input: [3, 3], target=6. Expected [0, 1], Got []",
-    "expected_bug": "Loop starts at i instead of i+1, so same element is compared with itself",
-    "difficulty": "easy"
+    "code": "def twoSum(nums, target):\n    for i in range(len(nums)):\n        for j in range(i, len(nums)):\n            if nums[i] + nums[j] == target:\n                return [i, j]\n    return []",
+    "test_input": "[3, 3], 6",
+    "expected_output": "[0, 1]",
+    "test_failure": "Input: [3, 3], target=6. Expected [0, 1], Got [0, 0]"
   },
   {
     "id": 2,
-    "problem": "Reverse String - Reverse array in-place",
-    "code": "def reverseString(s):\n    left = 0\n    right = len(s) - 1\n    while left < right:\n        s[left], s[right] = s[right], s[left]\n        left += 1\n        right -= 1\n    # BUG: missing return statement or not modifying in-place correctly",
-    "test_failure": "Input: ['a','b','c','d']. Expected to reverse in place",
-    "expected_bug": "Function doesn't return the reversed array",
-    "difficulty": "easy"
+    "problem": "Contains Duplicate",
+    "code": "def containsDuplicate(nums):\n    seen = set()\n    for num in nums:\n        seen.add(num)\n        if num in seen:\n            return True\n    return False",
+    "test_input": "[1, 2, 3, 1]",
+    "expected_output": "True",
+    "test_failure": "Expected True"
   },
   {
     "id": 3,
-    "problem": "Remove Duplicates - Remove duplicates from sorted array",
-    "code": "def removeDuplicates(nums):\n    if not nums:\n        return 0\n    k = 1\n    for i in range(1, len(nums)):\n        if nums[i] != nums[i-1]:\n            nums[k] = nums[i]\n            # BUG: forgot to increment k\n    return k",
-    "test_failure": "Expected k=5 with unique elements, duplicates remain",
-    "expected_bug": "k is not incremented when unique element is found",
-    "difficulty": "easy"
+    "problem": "Best Time to Buy and Sell Stock",
+    "code": "def maxProfit(prices):\n    min_price = prices[0]\n    max_profit = 0\n    for i in range(1, len(prices)):\n        profit = prices[i] - min_price\n        max_profit = max(max_profit, profit)\n        min_price = max(min_price, prices[i])\n    return max_profit",
+    "test_input": "[7, 1, 5, 3, 6, 4]",
+    "expected_output": "5",
+    "test_failure": "Expected 5"
   },
   {
     "id": 4,
-    "problem": "Best Time to Buy and Sell Stock - Max profit",
-    "code": "def maxProfit(prices):\n    min_price = prices[0]\n    max_profit = 0\n    for i in range(1, len(prices)):\n        profit = prices[i] - min_price\n        max_profit = max(max_profit, profit)\n        min_price = max(min_price, prices[i])  # BUG: should use min()\n    return max_profit",
-    "test_failure": "Input: [7,1,5,3,6,4]. Expected 5 (buy at 1, sell at 6), Got wrong value",
-    "expected_bug": "min_price updated with max() instead of min()",
-    "difficulty": "medium"
+    "problem": "Missing Number",
+    "code": "def missingNumber(nums):\n    n = len(nums)\n    expected_sum = n * (n - 1) // 2\n    actual_sum = sum(nums)\n    return expected_sum - actual_sum",
+    "test_input": "[9, 6, 4, 2, 3, 5, 7, 0, 1]",
+    "expected_output": "8",
+    "test_failure": "Expected 8"
   },
   {
     "id": 5,
-    "problem": "Contains Duplicate - Check if array has duplicates",
-    "code": "def containsDuplicate(nums):\n    seen = set()\n    for num in nums:\n        seen.add(num)  # BUG: check happens after adding\n        if num in seen:\n            return True\n    return False",
-    "test_failure": "Input: [1,2,3,1]. Expected True, Got False",
-    "expected_bug": "Checking if num in seen after already adding it",
-    "difficulty": "easy"
+    "problem": "Valid Palindrome",
+    "code": "def isPalindrome(s):\n    s = s.lower()\n    s = ''.join(c for c in s if c.isalnum())\n    left = 0\n    right = len(s) - 1\n    while left < right:\n        if s[left] != s[right]:\n            return False\n        left += 1\n        right -= 1\n    return True",
+    "test_input": "'racecar'",
+    "expected_output": "True",
+    "test_failure": "Expected True"
   },
   {
     "id": 6,
-    "problem": "Merge Sorted Array - Merge two sorted arrays",
-    "code": "def merge(nums1, m, nums2, n):\n    for i in range(n):\n        nums1[i] = nums2[i]  # BUG: should insert at position m+i\n    return nums1",
-    "test_failure": "nums1=[1], m=1, nums2=[0], n=1. Expected [0,1], Got [0]",
-    "expected_bug": "Overwriting from start instead of inserting at correct position",
-    "difficulty": "easy"
+    "problem": "Longest Substring",
+    "code": "def lengthOfLongestSubstring(s):\n    char_index = {}\n    max_len = 0\n    left = 0\n    for right in range(len(s)):\n        if s[right] in char_index:\n            left = char_index[s[right]]\n        char_index[s[right]] = right\n        max_len = max(max_len, right - left)\n    return max_len",
+    "test_input": "'abba'",
+    "expected_output": "2",
+    "test_failure": "Expected 2"
   },
   {
     "id": 7,
-    "problem": "Longest Substring Without Repeating",
-    "code": "def lengthOfLongestSubstring(s):\n    char_index = {}\n    max_len = 0\n    left = 0\n    for right in range(len(s)):\n        if s[right] in char_index:\n            left = char_index[s[right]]  # BUG: should be +1\n        char_index[s[right]] = right\n        max_len = max(max_len, right - left)\n    return max_len",
-    "test_failure": "Input: 'abba'. Expected 2, Got wrong value",
-    "expected_bug": "Left pointer not advanced past previous occurrence",
-    "difficulty": "medium"
+    "problem": "Remove Duplicates",
+    "code": "def removeDuplicates(nums):\n    if not nums:\n        return 0\n    k = 1\n    for i in range(1, len(nums)):\n        if nums[i] != nums[i-1]:\n            nums[k] = nums[i]\n    return k",
+    "test_input": "[0, 0, 1, 1, 1, 2, 2, 3, 3, 4]",
+    "expected_output": "5",
+    "test_failure": "Expected 5"
   },
   {
     "id": 8,
-    "problem": "Missing Number - Find missing number in array 0 to n",
-    "code": "def missingNumber(nums):\n    n = len(nums)\n    expected_sum = n * (n - 1) // 2  # BUG: should be n * (n + 1) // 2\n    actual_sum = sum(nums)\n    return expected_sum - actual_sum",
-    "test_failure": "Input: [9,6,4,2,3,5,7,0,1]. Expected 8, Got wrong value",
-    "expected_bug": "Sum formula is off by one in calculation",
-    "difficulty": "easy"
+    "problem": "Majority Element",
+    "code": "def majorityElement(nums):\n    count = {}\n    for num in nums:\n        count[num] = count.get(num, 0) + 1\n    for num, cnt in count.items():\n        if cnt > len(nums) // 2:\n            return num\n    return -1",
+    "test_input": "[2, 2, 1, 1, 1, 2, 2]",
+    "expected_output": "2",
+    "test_failure": "Expected 2"
   },
   {
     "id": 9,
-    "problem": "Valid Parentheses - Check if string has valid parentheses",
-    "code": "def isValid(s):\n    stack = []\n    pairs = {'(': ')', '[': ']', '{': '}'}\n    for char in s:\n        if char in pairs:\n            stack.append(char)  # BUG: should push closing bracket\n        else:\n            if not stack or pairs[stack.pop()] != char:\n                return False\n    return len(stack) == 0",
-    "test_failure": "Input: '([)]'. Expected False, Got True or error",
-    "expected_bug": "Pushing opening bracket instead of closing bracket",
-    "difficulty": "medium"
+    "problem": "Valid Parentheses",
+    "code": "def isValid(s):\n    stack = []\n    pairs = {'(': ')', '[': ']', '{': '}'}\n    for char in s:\n        if char in pairs:\n            stack.append(char)\n        else:\n            if not stack or pairs[stack.pop()] != char:\n                return False\n    return len(stack) == 0",
+    "test_input": "'()'",
+    "expected_output": "True",
+    "test_failure": "Expected True"
   },
   {
     "id": 10,
-    "problem": "Majority Element - Find element appearing more than n/2 times",
-    "code": "def majorityElement(nums):\n    count = {}\n    for num in nums:\n        count[num] = count.get(num, 0) + 1\n    for num, cnt in count.items():\n        if cnt > len(nums) // 2:  # BUG: should be >=\n            return num\n    return -1",
-    "test_failure": "Input: [2,2,1,1,1,2,2]. Expected 2, counts work but > instead of >=",
-    "expected_bug": "Using > instead of >= for majority check",
-    "difficulty": "medium"
+    "problem": "Two Pointers Sum",
+    "code": "def twoSum(nums, target):\n    left = 0\n    right = len(nums) - 1\n    while left < right:\n        current_sum = nums[left] + nums[right]\n        if current_sum == target:\n            return [left, right]\n        elif current_sum < target:\n            left += 1\n        else:\n            right -= 1\n    return []",
+    "test_input": "[1, 3, 4, 6], 9",
+    "expected_output": "[1, 3]",
+    "test_failure": "Expected [1, 3]"
   }
 ]

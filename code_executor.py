@@ -14,13 +14,34 @@ def extract_function_name(code_str: str) -> str:
 def parse_test_failure(test_failure: str) -> tuple:
     """Extract test input and expected output from test failure string"""
 
-    # Try to extract input - looks for "Input: [something]. Expected"
-    input_match = re.search(r'Input:\s*(.+?)\.\s*Expected', test_failure)
-    test_input = input_match.group(1).strip() if input_match else ""
+    test_input = ""
+    expected = ""
 
-    # Try to extract expected output - looks for "Expected [X], Got"
-    expected_match = re.search(r'Expected\s+(.+?),\s*Got', test_failure)
-    expected = expected_match.group(1).strip() if expected_match else ""
+    # Try multiple patterns for input extraction
+    patterns = [
+        r'Input:\s*(.+?)\.\s*Expected',  # "Input: X. Expected"
+        r'Input:\s*(.+?),\s*Expected',  # "Input: X, Expected"
+        r'Input:\s*(.+?)$',  # "Input: X" at end
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, test_failure)
+        if match:
+            test_input = match.group(1).strip()
+            break
+
+    # Try multiple patterns for expected extraction
+    expected_patterns = [
+        r'Expected\s+(.+?),\s*Got',  # "Expected X, Got"
+        r'Expected\s+(.+?)\.',  # "Expected X."
+        r'Expected:\s*(.+?),',  # "Expected: X,"
+    ]
+
+    for pattern in expected_patterns:
+        match = re.search(pattern, test_failure)
+        if match:
+            expected = match.group(1).strip()
+            break
 
     return test_input, expected
 
@@ -129,7 +150,6 @@ if __name__ == '__main__':
 if __name__ == "__main__":
     import json
 
-    # Test 1: Load and test from test_cases.json
     print("=" * 80)
     print("TESTING CODE EXECUTOR")
     print("=" * 80)
@@ -138,12 +158,14 @@ if __name__ == "__main__":
         with open('test_cases.json', 'r') as f:
             test_cases = json.load(f)
 
-        # Test first 3 cases
-        for case in test_cases[:3]:
+        # Test first 5 cases
+        for case in test_cases[:5]:
             print(f"\n[Case {case['id']}] {case['problem']}")
 
-            # Parse test failure
-            test_input, expected = parse_test_failure(case['test_failure'])
+            # Use test_input and expected_output directly from JSON
+            test_input = case['test_input']
+            expected = case['expected_output']
+
             print(f"  Input: {test_input}")
             print(f"  Expected: {expected}")
 
@@ -153,30 +175,4 @@ if __name__ == "__main__":
             print(f"  Status: {result['details']}")
 
     except FileNotFoundError:
-        print("\n⚠️ test_cases.json not found. Testing with hardcoded example instead...\n")
-
-        # Hardcoded test
-        code = """
-def twoSum(nums, target):
-    for i in range(len(nums)):
-        for j in range(i+1, len(nums)):
-            if nums[i] + nums[j] == target:
-                return [i, j]
-    return []
-"""
-
-        print("Testing twoSum (correct code):")
-        result = execute_python_code(code, "[2, 7, 11, 15], 9", "[0, 1]")
-        print(f"  Result: {result}")
-
-        print("\nTesting twoSum (buggy code):")
-        code_buggy = """
-def twoSum(nums, target):
-    for i in range(len(nums)):
-        for j in range(i, len(nums)):
-            if nums[i] + nums[j] == target:
-                return [i, j]
-    return []
-"""
-        result = execute_python_code(code_buggy, "[3, 3], 6", "[0, 1]")
-        print(f"  Result: {result}")
+        print("\n⚠️ test_cases.json not found.")
