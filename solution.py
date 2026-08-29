@@ -15,22 +15,46 @@ client = Anthropic(
 
 
 def extract_constraints(problem: str) -> str:
-    """Tool 1: Extract key constraints from problem statement"""
+    """Tool 1: Extract specific, actionable constraints for debugging"""
 
-    prompt = f"""You are analyzing a LeetCode problem. Extract the key constraints and requirements.
+    prompt = f"""You are analyzing a LeetCode problem to extract debugging-critical constraints.
 
 PROBLEM: {problem}
 
-List the important constraints:
-1. Input constraints (size, range, format)
-2. Output requirements (what should be returned, format)
-3. Special conditions (edge cases, no extra space, in-place modification, etc.)
+Extract constraints in these specific categories:
 
-Be concise, list only the critical constraints."""
+1. **Input Constraints:**
+   - Array/string size limits (n, m ranges)
+   - Element value ranges (can be negative? zero?)
+   - Any special properties (sorted? unique?)
+
+2. **Output Requirements:**
+   - What format? (array, int, boolean, etc.)
+   - Any ordering requirements?
+   - In-place modification or return new?
+
+3. **Critical Logic Rules (Most important for debugging):**
+   - Must use different elements? (Two pointers problem)
+   - Must preserve order?
+   - Must avoid duplicates in result?
+   - Time/space complexity hints?
+   - Special edge cases to handle?
+
+4. **Common Bug Triggers:**
+   - Off-by-one: Any loop bounds that matter?
+   - Comparison operators: > vs >=, < vs <=?
+   - Pointer management: left/right pointer updates?
+   - State changes: When to reset counters/pointers?
+
+Be specific with examples. For instance:
+- Instead of "array has elements", say "array has 1-10^5 elements, can include duplicates"
+- Instead of "return indices", say "return two DIFFERENT indices [i, j] where i != j"
+
+Format as a numbered list. Be concise but specific."""
 
     message = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=500,
+        max_tokens=800,
         messages=[{"role": "user", "content": prompt}]
     )
 
@@ -38,31 +62,121 @@ Be concise, list only the critical constraints."""
 
 
 def analyze_code_patterns(code: str) -> str:
-    """Tool 2: Analyze code structure and patterns that often cause bugs"""
+    """Tool 2: Systematically analyze code for bug-prone patterns"""
 
-    prompt = f"""Analyze this code for common bug patterns. Look for:
+    prompt = f"""You are analyzing code for debugging patterns. Be systematic and specific.
 
 CODE:
 {code}
 
-Check for:
-1. Loop conditions and bounds (off-by-one errors?)
-2. Pointer/index management (left, right, i, j movements)
-3. Comparison operators (>, >=, <, <=, ==, !=)
-4. Data structure updates (are elements being added/modified correctly?)
-5. Return statements (returning correct values?)
-6. Edge cases (empty, single element, duplicates)
+Check EACH of these categories and report findings:
 
-List potential issues or suspicious patterns."""
+**1. Loop Conditions & Bounds (Off-by-one errors)**
+   - What are all the loops? (for, while)
+   - What are their start/end conditions? (range(0, n)? range(i, n)?)
+   - Do they correctly include/exclude boundary elements?
+   - Common mistakes: range(n) vs range(n+1), left < right vs left <= right
+
+**2. Pointer/Index Management**
+   - Are there left/right pointers? left = 0, right = len(x) - 1
+   - When do they move? left += 1, right -= 1
+   - Do they ever overlap incorrectly?
+   - Are indices ever accessed when out of bounds?
+
+**3. Comparison Operators**
+   - All == comparisons correct? (should be !=?)
+   - All > vs >= correct?
+   - All < vs <= correct?
+   - Impact on boundary conditions?
+
+**4. State Changes & Updates**
+   - When variables are updated (min_price, count, k), is timing correct?
+   - Should they be updated before or after checks?
+   - Are they updated in all necessary branches?
+
+**5. Return Statements**
+   - What gets returned? Is it the right type?
+   - Are there paths that don't return?
+   - Should it return intermediate results or final?
+
+**6. Edge Cases Not Handled**
+   - Empty input? (arrays, strings)
+   - Single element?
+   - Duplicates?
+   - Negative numbers?
+
+For each finding, state:
+- WHAT: The potential issue
+- WHERE: Line number or code snippet
+- WHY: How this could cause a bug
+- IMPACT: What output would be wrong
+
+Be concise but thorough."""
 
     message = client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=500,
+        max_tokens=1000,
         messages=[{"role": "user", "content": prompt}]
     )
 
     return message.content[0].text
 
+
+def suggest_fix(code: str, bug_description: str, problem: str) -> str:
+    """Tool 3: Generate precise, testable code fixes"""
+
+    prompt = f"""You are generating a precise code fix based on bug analysis.
+
+PROBLEM: {problem}
+
+BUGGY CODE:
+{code}
+
+BUG IDENTIFIED: {bug_description}
+
+Generate a fix by:
+
+1. **Identify exact line(s) to change**
+   - Show the original line exactly as it appears
+   - Show the corrected line
+
+2. **Explain the change in 1 sentence**
+   - Why this specific change fixes the bug
+   - What constraint it now satisfies
+
+3. **Verify the fix works**
+   - Show how the corrected code would execute
+   - Walk through with the failing test case
+   - Show the corrected output
+
+4. **Consider side effects**
+   - Does this fix break anything else?
+   - Does it handle edge cases now?
+
+Format as:
+
+**Line X:** 
+```python
+# BEFORE:
+original_line_here
+
+# AFTER:
+fixed_line_here
+```
+
+**Why:** One sentence explanation.
+
+**Verification:** Walk through with test case showing correct output.
+
+Be precise. Show exact code, not pseudocode."""
+
+    message = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=600,
+        messages=[{"role": "user", "content": prompt}]
+    )
+
+    return message.content[0].text
 
 def debug_code_solution(code: str, problem: str, test_failure: str, test_input: str = "",
                         expected_output: str = "") -> dict:
