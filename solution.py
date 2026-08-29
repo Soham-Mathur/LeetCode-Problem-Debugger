@@ -2,7 +2,7 @@ import os
 import json
 from dotenv import load_dotenv
 from anthropic import Anthropic
-from code_executor import execute_python_code
+from code_executor import execute_python_code, parse_test_failure
 
 # Load environment variables
 load_dotenv()
@@ -29,7 +29,7 @@ List the important constraints:
 Be concise, list only the critical constraints."""
 
     message = client.messages.create(
-        model="claude-sonnet-4.6",
+        model="claude-haiku-4-5-20251001",
         max_tokens=500,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -56,7 +56,7 @@ Check for:
 List potential issues or suspicious patterns."""
 
     message = client.messages.create(
-        model="claude-sonnet-4.6",
+        model="claude-haiku-4-5-20251001",
         max_tokens=500,
         messages=[{"role": "user", "content": prompt}]
     )
@@ -64,9 +64,17 @@ List potential issues or suspicious patterns."""
     return message.content[0].text
 
 
-def debug_code_solution(code: str, problem: str, test_failure: str) -> dict:
+def debug_code_solution(code: str, problem: str, test_failure: str, test_input: str = "",
+                        expected_output: str = "") -> dict:
     """
-    Agent solution: Uses tools to debug more systematically
+    Agent solution: Uses tools to debug more systematically WITH REAL EXECUTION DATA
+
+    Args:
+        code: Python function code
+        problem: Problem description
+        test_failure: Test failure description
+        test_input: Input for execution (e.g., "[3, 3], 6")
+        expected_output: Expected output (e.g., "[0, 1]")
     """
 
     # Step 1: Extract constraints
@@ -77,23 +85,35 @@ def debug_code_solution(code: str, problem: str, test_failure: str) -> dict:
     print("  → Analyzing code patterns...")
     patterns = analyze_code_patterns(code)
 
-    # Step 3: EXECUTE CODE LOCALLY (new!)
-    print("  → Executing code locally...")
-    # Parse test_input and expected output from test_failure
-    # Simple extraction: assume "Expected [X], Got [Y]" format
-    import re
-    match = re.search(r'Expected\s+(.+?),\s+Got', test_failure)
-    expected = match.group(1) if match else "unknown"
+    # Step 3: EXECUTE CODE TO GET REAL DATA (NEW!)
+    print("  → Executing code locally for real data...")
+    execution_result = None
+    execution_details = "No execution data available"
 
-    # Extract input from test_failure (simple parsing)
-    input_match = re.search(r'Input:\s*(.+?)\.\s+Expected', test_failure)
-    test_input = input_match.group(1) if input_match else ""
+    if test_input and expected_output:
+        try:
+            execution_result = execute_python_code(code, test_input, expected_output)
+            if execution_result["success"]:
+                execution_details = f"✅ Test Passed: Output is {execution_result['actual']}"
+            else:
+                execution_details = f"❌ Test Failed:\n  Expected: {execution_result['expected']}\n  Actual: {execution_result['actual']}\n  Error: {execution_result['details']}"
+        except Exception as e:
+            execution_details = f"Execution error: {str(e)}"
+    else:
+        # Fallback: try to parse from test_failure
+        try:
+            parsed_input, parsed_expected = parse_test_failure(test_failure)
+            if parsed_input and parsed_expected:
+                execution_result = execute_python_code(code, parsed_input, parsed_expected)
+                if execution_result["success"]:
+                    execution_details = f"✅ Test Passed: Output is {execution_result['actual']}"
+                else:
+                    execution_details = f"❌ Test Failed:\n  Expected: {execution_result['expected']}\n  Actual: {execution_result['actual']}\n  Error: {execution_result['details']}"
+        except:
+            pass
 
-    execution_result = execute_python_code(code, test_input, expected)
-    execution_details = f"Execution: {execution_result['details']}\nActual output: {execution_result.get('actual', 'N/A')}"
-
-    # Step 4: Synthesize debugging analysis WITH execution data
-    synthesis_prompt = f"""You are an expert debugging assistant. Analyze this code:
+    # Step 4: Synthesize debugging analysis WITH REAL EXECUTION DATA
+    synthesis_prompt = f"""You are an expert debugging assistant. Analyze this code USING REAL EXECUTION DATA:
 
 PROBLEM: {problem}
 
@@ -108,18 +128,18 @@ PROBLEM CONSTRAINTS:
 CODE PATTERN ANALYSIS:
 {patterns}
 
-ACTUAL EXECUTION RESULT:
+ACTUAL CODE EXECUTION RESULT:
 {execution_details}
 
 Given the above analysis AND real execution data:
 1. Identify the specific bug in the code
-2. Explain WHY it's a bug (reference constraints and execution output)
+2. Explain WHY it's a bug (reference the constraints and actual execution results)
 3. Suggest the fix (1-2 lines)
 
-Be precise and concise."""
+Use the actual execution output to confirm your analysis. Be precise and concise."""
 
     message = client.messages.create(
-        model="claude-sonnet-4.6",
+        model="claude-haiku-4-5-20251001",
         max_tokens=800,
         messages=[{"role": "user", "content": synthesis_prompt}]
     )
@@ -128,7 +148,8 @@ Be precise and concise."""
         "bug_analysis": message.content[0].text,
         "constraints": constraints,
         "patterns": patterns,
-        "execution": execution_result
+        "execution": execution_result,
+        "execution_details": execution_details
     }
 
 
@@ -141,17 +162,21 @@ if __name__ == "__main__":
         cases = json.load(f)
         case = cases[0]
 
-    print("Testing SOLUTION on first case:")
+    print("Testing SOLUTION (with real execution data) on first case:")
     print(f"Problem: {case['problem']}")
-    print(f"Expected bug: {case['expected_bug']}\n")
+    print(f"Expected bug: Case 1 - should catch the bug\n")
 
-    result = debug_code_solution(case["code"], case["problem"], case["test_failure"])
+    result = debug_code_solution(
+        code=case["code"],
+        problem=case["problem"],
+        test_failure=case["test_failure"],
+        test_input=case["test_input"],
+        expected_output=case["expected_output"]
+    )
 
     print("SOLUTION OUTPUT:")
     print("=" * 60)
     print(result["bug_analysis"])
     print("=" * 60)
-    print("\nConstraints extracted:")
-    print(result["constraints"][:300])
-    print("\nCode patterns analyzed:")
-    print(result["patterns"][:300])
+    print("\nExecution details:")
+    print(result["execution_details"])

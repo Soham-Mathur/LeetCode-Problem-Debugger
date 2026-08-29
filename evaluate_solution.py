@@ -71,7 +71,7 @@ def evaluate_both():
         problem = case["problem"]
         code = case["code"]
         test_failure = case["test_failure"]
-        expected_bug = case["expected_bug"]
+        expected_bug = case.get("expected_bug", case.get("expected_output", ""))
 
         print(f"\n[Case {problem_id}] {problem}")
         print(f"Expected: {expected_bug}")
@@ -101,9 +101,16 @@ def evaluate_both():
             })
 
         # SOLUTION
+        # SOLUTION
         try:
             print(f"  Solution: Running agent with tools...")
-            solution_result = debug_code_solution(code, problem, test_failure)
+            solution_result = debug_code_solution(
+                code=code,
+                problem=problem,
+                test_failure=test_failure,
+                test_input=case.get("test_input", ""),  # ADD THIS
+                expected_output=case.get("expected_output", "")  # ADD THIS
+            )
             solution_output = solution_result["bug_analysis"]
             solution_correct = score_debug_output(solution_output, expected_bug)
             solution_reasoning = measure_reasoning_depth(solution_output)
