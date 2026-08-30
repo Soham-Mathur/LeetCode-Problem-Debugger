@@ -8,11 +8,11 @@ Follow these steps to reproduce the agent evaluation benchmark and verify the re
 
 ## Setup Instructions
 
-1. **Clone the repository:**
-   ```bash
-   git clone [[https://github.com/Soham](https://github.com/Soham-Mathur/LeetCode-Problem-Debugger)]
-   cd LeetCode-Problem-Debugger
-   ```
+1. Clone the repository:
+```bash
+git clone https://github.com/Soham-Mathur/LeetCode-Problem-Debugger
+```
+
 
 2. **Create and activate a virtual environment:**
    ```bash
