@@ -124,7 +124,8 @@ def evaluate_both():
                 "correct": solution_correct,
                 "reasoning_depth": solution_reasoning,
                 "latency_sec": solution_time,
-                "output": solution_output[:200]
+                "output": solution_output[:200],
+                "metrics": solution_result.get("metrics", {})
             })
             if solution_correct:
                 results["solution"]["correct"] += 1
@@ -187,20 +188,24 @@ def evaluate_both():
     solution_total_latency = sum(solution_latencies)
 
     # Rough cost estimates (Haiku: $0.80/1M input, $4/1M output)
-    baseline_cost = baseline_correct * 0.003
-    solution_cost = solution_correct * 0.006
+    baseline_cost = baseline_correct * 0.003  # Baseline static estimate
+    solution_cost = sum(
+        c.get("metrics", {}).get("total_cost_usd", 0.0)
+        for c in results["solution"]["cases"]
+    )
 
     print(f"\n{'Metric':<30} {'Baseline':<20} {'Solution':<20} {'Delta':<15}")
     print("-" * 85)
-    print(f"{'Accuracy':<30} {baseline_pct:.1f}% {solution_pct:.1f}% {(solution_pct - baseline_pct):+.1f}%")
     print(
-        f"{'Reasoning Depth':<30} {baseline_avg_reasoning:.1f}/11 {solution_avg_reasoning:.1f}/11 {(solution_avg_reasoning - baseline_avg_reasoning):+.1f}")
+        f"{'Accuracy':<30} {f'{baseline_pct:.1f}%':<20} {f'{solution_pct:.1f}%':<20} {f'{(solution_pct - baseline_pct):+.1f}%':<15}")
     print(
-        f"{'Avg Latency per Case (s)':<30} {baseline_avg_latency:.2f}s {solution_avg_latency:.2f}s {(solution_avg_latency - baseline_avg_latency):+.2f}s")
+        f"{'Reasoning Depth':<30} {f'{baseline_avg_reasoning:.1f}/11':<20} {f'{solution_avg_reasoning:.1f}/11':<20} {f'{(solution_avg_reasoning - baseline_avg_reasoning):+.1f}':<15}")
     print(
-        f"{'Total Latency (s)':<30} {baseline_total_latency:.2f}s {solution_total_latency:.2f}s {(solution_total_latency - baseline_total_latency):+.2f}s")
+        f"{'Avg Latency per Case (s)':<30} {f'{baseline_avg_latency:.2f}s':<20} {f'{solution_avg_latency:.2f}s':<20} {f'{(solution_avg_latency - baseline_avg_latency):+.2f}s':<15}")
     print(
-        f"{'Estimated API Cost ($)':<30} ${baseline_cost:.3f} ${solution_cost:.3f} ${(solution_cost - baseline_cost):+.3f}")
+        f"{'Total Latency (s)':<30} {f'{baseline_total_latency:.2f}s':<20} {f'{solution_total_latency:.2f}s':<20} {f'{(solution_total_latency - baseline_total_latency):+.2f}s':<15}")
+    print(
+        f"{'Estimated API Cost ($)':<30} {f'${baseline_cost:.3f}':<20} {f'${solution_cost:.3f}':<20} {f'${(solution_cost - baseline_cost):+.3f}':<15}")
     print()
 
     # Save results
