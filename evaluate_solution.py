@@ -72,7 +72,7 @@ def evaluate_both():
         problem = case["problem"]
         code = case["code"]
         test_failure = case["test_failure"]
-        expected_bug = case.get("expected_bug", "Unspecified bug pattern")
+        expected_bug = case.get("expected_bug", case.get("problem", "Bug analysis"))
 
         print(f"\n[Case {problem_id}] {problem}")
         print(f"Expected: {expected_bug}")
