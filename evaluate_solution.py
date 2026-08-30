@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from dotenv import load_dotenv
 from solution import debug_code_solution
 from baseline import debug_code_baseline
@@ -71,14 +72,17 @@ def evaluate_both():
         problem = case["problem"]
         code = case["code"]
         test_failure = case["test_failure"]
-        expected_bug = case.get("expected_bug", case.get("expected_output", ""))
+        expected_bug = case.get("expected_bug", "Unspecified bug pattern")
 
         print(f"\n[Case {problem_id}] {problem}")
         print(f"Expected: {expected_bug}")
 
         # BASELINE
         try:
+            start_time = time.time()
             baseline_output = debug_code_baseline(code, problem, test_failure)
+            baseline_time = time.time() - start_time
+
             baseline_correct = score_debug_output(baseline_output, expected_bug)
             baseline_reasoning = measure_reasoning_depth(baseline_output)
 
@@ -86,31 +90,31 @@ def evaluate_both():
                 "id": problem_id,
                 "correct": baseline_correct,
                 "reasoning_depth": baseline_reasoning,
+                "latency_sec": baseline_time,
                 "output": baseline_output[:200]
             })
             if baseline_correct:
                 results["baseline"]["correct"] += 1
-            print(f"  Baseline: {'✅' if baseline_correct else '❌'} (reasoning: {baseline_reasoning}/11)")
+            print(
+                f"  Baseline: {'✅' if baseline_correct else '❌'} (reasoning: {baseline_reasoning}/11, time: {baseline_time:.2f}s)")
         except Exception as e:
             print(f"  Baseline: ❌ ERROR")
             results["baseline"]["cases"].append({
                 "id": problem_id,
                 "correct": False,
                 "reasoning_depth": 0,
+                "latency_sec": 0,
                 "error": str(e)[:100]
             })
 
         # SOLUTION
-        # SOLUTION
         try:
             print(f"  Solution: Running agent with tools...")
-            solution_result = debug_code_solution(
-                code=code,
-                problem=problem,
-                test_failure=test_failure,
-                test_input=case.get("test_input", ""),  # ADD THIS
-                expected_output=case.get("expected_output", "")  # ADD THIS
-            )
+            start_time = time.time()
+            solution_result = debug_code_solution(code, problem, test_failure, case.get("test_input", ""),
+                                                  case.get("expected_output", ""))
+            solution_time = time.time() - start_time
+
             solution_output = solution_result["bug_analysis"]
             solution_correct = score_debug_output(solution_output, expected_bug)
             solution_reasoning = measure_reasoning_depth(solution_output)
@@ -119,17 +123,20 @@ def evaluate_both():
                 "id": problem_id,
                 "correct": solution_correct,
                 "reasoning_depth": solution_reasoning,
+                "latency_sec": solution_time,
                 "output": solution_output[:200]
             })
             if solution_correct:
                 results["solution"]["correct"] += 1
-            print(f"  Solution: {'✅' if solution_correct else '❌'} (reasoning: {solution_reasoning}/11)")
+            print(
+                f"  Solution: {'✅' if solution_correct else '❌'} (reasoning: {solution_reasoning}/11, time: {solution_time:.2f}s)")
         except Exception as e:
             print(f"  Solution: ❌ ERROR")
             results["solution"]["cases"].append({
                 "id": problem_id,
                 "correct": False,
                 "reasoning_depth": 0,
+                "latency_sec": 0,
                 "error": str(e)[:100]
             })
 
@@ -165,11 +172,42 @@ def evaluate_both():
     print(f"Solution:  {solution_avg_reasoning:.1f}/11")
     print(f"📈 Reasoning improvement: +{solution_avg_reasoning - baseline_avg_reasoning:.1f} steps")
 
+    # Performance benchmarks
+    print("\n" + "=" * 80)
+    print("PERFORMANCE BENCHMARKS")
+    print("=" * 80)
+
+    baseline_latencies = [c.get("latency_sec", 0) for c in results["baseline"]["cases"]]
+    solution_latencies = [c.get("latency_sec", 0) for c in results["solution"]["cases"]]
+
+    baseline_avg_latency = sum(baseline_latencies) / len(baseline_latencies) if baseline_latencies else 0
+    solution_avg_latency = sum(solution_latencies) / len(solution_latencies) if solution_latencies else 0
+
+    baseline_total_latency = sum(baseline_latencies)
+    solution_total_latency = sum(solution_latencies)
+
+    # Rough cost estimates (Haiku: $0.80/1M input, $4/1M output)
+    baseline_cost = baseline_correct * 0.003
+    solution_cost = solution_correct * 0.006
+
+    print(f"\n{'Metric':<30} {'Baseline':<20} {'Solution':<20} {'Delta':<15}")
+    print("-" * 85)
+    print(f"{'Accuracy':<30} {baseline_pct:.1f}% {solution_pct:.1f}% {(solution_pct - baseline_pct):+.1f}%")
+    print(
+        f"{'Reasoning Depth':<30} {baseline_avg_reasoning:.1f}/11 {solution_avg_reasoning:.1f}/11 {(solution_avg_reasoning - baseline_avg_reasoning):+.1f}")
+    print(
+        f"{'Avg Latency per Case (s)':<30} {baseline_avg_latency:.2f}s {solution_avg_latency:.2f}s {(solution_avg_latency - baseline_avg_latency):+.2f}s")
+    print(
+        f"{'Total Latency (s)':<30} {baseline_total_latency:.2f}s {solution_total_latency:.2f}s {(solution_total_latency - baseline_total_latency):+.2f}s")
+    print(
+        f"{'Estimated API Cost ($)':<30} ${baseline_cost:.3f} ${solution_cost:.3f} ${(solution_cost - baseline_cost):+.3f}")
+    print()
+
     # Save results
     with open('comparison_results.json', 'w') as f:
         json.dump(results, f, indent=2)
 
-    print("\n✅ Full results saved to comparison_results.json")
+    print("✅ Full results saved to comparison_results.json")
     return results
 
 
